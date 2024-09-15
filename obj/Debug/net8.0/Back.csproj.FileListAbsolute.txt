@@ -61,3 +61,4 @@ C:\Users\long_\Desktop\Desarrollo de software\Laboratorio III\ApiVacunatorio\Bac
 C:\Users\long_\Desktop\Desarrollo de software\Laboratorio III\ApiVacunatorio\Back\bin\Debug\net8.0\Microsoft.AspNetCore.JsonPatch.dll
 C:\Users\long_\Desktop\Desarrollo de software\Laboratorio III\ApiVacunatorio\Back\bin\Debug\net8.0\Microsoft.AspNetCore.Mvc.NewtonsoftJson.dll
 C:\Users\long_\Desktop\Desarrollo de software\Laboratorio III\ApiVacunatorio\Back\bin\Debug\net8.0\Newtonsoft.Json.Bson.dll
+C:\Users\long_\Desktop\Desarrollo de software\Laboratorio III\ApiVacunatorio\Back\obj\Debug\net8.0\Back.sourcelink.json

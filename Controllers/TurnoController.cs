@@ -23,7 +23,7 @@ namespace Back.Controllers
 		{
 			try
 			{
-				var laboratorios = await contexto.Turno
+				var turno = await contexto.Turno
 				.Include(t => t.Paciente)
 				.Include(t => t.TipoDeVacuna)
 				.Include(t => t.Tutor)
@@ -32,7 +32,7 @@ namespace Back.Controllers
 					.ThenInclude(a => a.LoteProveedor)
 						.ThenInclude(l => l.Laboratorio)
 				.ToListAsync();
-				return Ok(laboratorios);
+				return Ok(turno);
 			}
 			catch (Exception ex)
 			{
@@ -40,27 +40,34 @@ namespace Back.Controllers
 			}
 		}
 
-		[HttpGet]
-		public async Task<ActionResult<IEnumerable<Turno>>> Get(int id)
+		[HttpGet("{id}")]
+		public async Task<ActionResult<Turno>> Get(int id)
 		{
 			try
 			{
-				var laboratorio = await contexto.Turno
-				.Include(t => t.Paciente)
-				.Include(t => t.TipoDeVacuna)
-				.Include(t => t.Tutor)
-				.Include(t => t.Agente)
-				.Include(t => t.Aplicacion)
-					.ThenInclude(a => a.LoteProveedor)
-						.ThenInclude(l => l.Laboratorio)
-				.Where(t => t.Id == id)
-				return Ok(laboratorio);
+				var turno = await contexto.Turno
+					.Include(t => t.Paciente)
+					.Include(t => t.TipoDeVacuna)
+					.Include(t => t.Tutor)
+					.Include(t => t.Agente)
+					.Include(t => t.Aplicacion)
+						.ThenInclude(a => a.LoteProveedor)
+							.ThenInclude(l => l.Laboratorio)
+					.SingleOrDefaultAsync(t => t.Id == id);
+
+				if (turno == null)
+				{
+					return NotFound();
+				}
+
+				return Ok(turno);
 			}
 			catch (Exception ex)
 			{
 				return BadRequest(ex.Message);
 			}
 		}
+
 
 		[HttpPost]
 		public async Task<IActionResult> Post([FromForm] Turno turno)
@@ -96,7 +103,7 @@ namespace Back.Controllers
 					var aplicacion = new Aplicacion
 					{
 						LoteProveedorId = loteP.Id,
-						AgenteId = null,
+						AgenteId = 0,
 						Dosis = dosis+1,
 						Estado = Estado.Pendiente
 					};
@@ -128,8 +135,6 @@ namespace Back.Controllers
 			{
 				if (ModelState.IsValid)
 				{
-					var aplicacion = await contexto.Aplicacion.FindAsync(turno.AplicacionId);
-					aplicacion.Estado = 'Cancelada';
 					var loteP = await contexto.LoteProveedor
 						.Where(l => l.TipoDeVacunaId == turno.TipoDeVacunaId && l.CantidadDeVacunas > 0)
 						.FirstOrDefaultAsync();
@@ -150,19 +155,35 @@ namespace Back.Controllers
 
 					var dosis = maxDosis.Any() ? maxDosis.Max() : 0; // Determinar la dosis máxima o usar 0 si no hay registros
 
+					// 3) Actualizar el estado de la aplicación directamente con SQL crudo
+					await contexto.Database.ExecuteSqlRawAsync("UPDATE Aplicacion SET Estado = 'Cancelada' WHERE Id = {0}", turno.AplicacionId);
 
-					// 3) Crear la aplicación correspondiente
-					var matricula = int.Parse(User.FindFirstValue("Matricula"));
+					// Crear la nueva aplicación
 					var aplicacion = new Aplicacion
 					{
 						LoteProveedorId = loteP.Id,
 						AgenteId = null,
-						Dosis = dosis+1,
+						Dosis = dosis + 1,
 						Estado = Estado.Pendiente
 					};
+
+					contexto.Aplicacion.Add(aplicacion);
+					await contexto.SaveChangesAsync();
+
+					// 4) Asignar el ID de la nueva aplicación al turno y guardar el turno
+					turno.AplicacionId = aplicacion.Id;
+
 					contexto.Turno.Update(turno);
 					await contexto.SaveChangesAsync();
+
 					return Ok(turno);
+				}
+				else
+				{
+					// Inspect the errors in ModelState
+					var errors = ModelState.Values.SelectMany(v => v.Errors);
+					var errorMessages = string.Join("; ", errors.Select(e => e.ErrorMessage));
+					return BadRequest($"Modelo no válido: {errorMessages}");
 				}
 			}
 			catch (Exception ex)
@@ -171,7 +192,8 @@ namespace Back.Controllers
 			}
 		}
 
-		[HttpPut("{id}")]
+
+		/*[HttpPut("{id}")]
 		public async Task<IActionResult> Put(int id, [FromForm] Turno turno)
 		{
 			try
@@ -185,6 +207,6 @@ namespace Back.Controllers
 			{
 				return BadRequest(ex.InnerException?.Message ?? ex.Message);
 			}
-		}
+		}*/
 	}
 }

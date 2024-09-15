@@ -12,7 +12,6 @@ namespace Back.Models
         [Required]
         public int LoteProveedorId { get; set; }
         
-        [Required]
         public int? AgenteId { get; set; }
         
         [Required]
